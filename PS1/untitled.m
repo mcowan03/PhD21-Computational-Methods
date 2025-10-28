@@ -20,7 +20,7 @@ z_values = linspace(0.01, 10, 1000);
 % Parameterise for lognormal z distribution
 mu = 0;
 %sigma = 0.5;
-pdf_z = lognpdf(z_values, -0.5 * sigma, sigma);
+pdf_z = lognpdf(z_values, -0.5 * sigma^2, sigma);
 pdf_z = pdf_z / sum(pdf_z); % To normalise the sum of pdf_z(i) for all i to 1. Essentially going from density to probability distn.
 
 % So pdf_z will be 1000 length vector, with each pdf_z(i) is the density at
@@ -122,7 +122,7 @@ for i = 1:length(worker_value_func)
     else
         % Original valid calculation
         a_future_i = beta * c_worker_values(i);
-        worker_value_func(i) = log(c_worker_values(i)) - eta * (1 / (1 + (1 / chi))) * worker_hours(i) + beta * log(a_future_i);
+        worker_value_func(i) = log(c_worker_values(i)) - eta * (1 / (1 + (1 / chi))) * worker_hours(i)^(1+1/chi) + beta * log(a_future_i);
     end
 end
 
@@ -212,7 +212,7 @@ error_G = gov_revenue - gov_spending;
 
 w_implied = (1 - alpha) * A * (K_agg / L_agg)^alpha;
 step = 0.5;
-w_new = w + step * (w_implied - w); 
+w_new = w * step + w_implied * (1-step); 
 T_new = T + error_G;
 
 w = w_new;
@@ -245,5 +245,6 @@ income_vector = z_values .* w * (1 - tau) .* eff_labour_supply + a * (1 + r * (1
 
 mean_income = sum(income_vector .* pdf_z)
 std_dev_income = std(income_vector)
+
 
 std_mean_ratio = std_dev_income / mean_income
