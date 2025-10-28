@@ -36,7 +36,7 @@ z_values = linspace(0.01, 10, 1000);
 % Parameterise for lognormal z distribution
 mu = 0;
 %sigma = 0.5;
-pdf_z = lognpdf(z_values, -0.5 * sigma, sigma);
+pdf_z = lognpdf(z_values, -0.5 * sigma^2, sigma);
 pdf_z = pdf_z / sum(pdf_z); % To normalise the sum of pdf_z(i) for all i to 1. Essentially going from density to probability distn.
 
 % So pdf_z will be 1000 length vector, with each pdf_z(i) is the density at
@@ -132,7 +132,7 @@ a_future_non_worker = beta * c_non_worker;
 worker_value_func = zeros(size(z_values));
 
     for i = 1:length(worker_value_func)
-    worker_value_func(i) = log(c_worker_values(i)) - eta * (1 / (1 + (1 / chi))) * worker_hours(i) + beta * log(a_future(i));
+    worker_value_func(i) = log(c_worker_values(i)) - eta * (1 / (1 + (1 / chi))) * worker_hours(i)^(1+1/chi) + beta * log(a_future(i));
     end
 
 %disp(worker_value_func)
@@ -265,4 +265,5 @@ std_mean_ratio = std_dev_income / mean_income
         unemp_benefit;
         std_mean_ratio
     ];
+
 end
