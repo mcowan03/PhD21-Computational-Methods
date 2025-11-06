@@ -1,0 +1,141 @@
+% Replicate Aiyagari (1994) Figure IIb, no borrowing constraint (a_lower=0)
+clear; clc;
+
+% --- Parameters ---
+beta = 0.96;
+delta = 0.08;
+alpha = 0.36;
+A = 1.0;
+
+rho = 0.9;
+mu = 0;
+m = 3.0;
+Nz = 7;
+sigma = 0.2 * sqrt(1 - rho^2);
+
+Na = 80;         % Asset grid points (speed: fewer is faster!)
+Na2 = 160;
+a_lower = 0;
+a_upper = 30;
+
+x = linspace(0,0.5,Na);
+x2 = linspace(0,0.5,Na2);
+y = x.^5/max(x.^5);
+y2 = x2.^5/max(x2.^5);
+a_grid = a_lower + (a_upper-a_lower)*y;
+a_grid2 = a_lower + (a_upper-a_lower)*y2;
+
+rvec = linspace(-0.05, 0.06, 26); % From -delta to 6%
+
+[logzgrid, P] = tauchen(rho, sigma, mu, Nz, m);
+zGrid = exp(logzgrid);
+
+[vL,~] = eigs(P',1);
+vL = vL/sum(vL);
+disp(vL);
+Lbar = zGrid*vL;
+
+Ea_vec = zeros(size(rvec));     % Household asset supply at each r
+Kdem_vec = zeros(size(rvec));   % Firm capital demand at each r. Given for every r...
+
+for ir = 1:length(rvec)
+    r = rvec(ir);
+    % Cobb-Douglas wage at this r and Lbar
+    Kguess = ((alpha*A)/(r+delta))^(1/(1-alpha))*Lbar; % rough guess for w computation, since only needed for household
+    w = (1-alpha)*(Kguess/Lbar)^alpha;
+    
+    % VFI Initialization
+    mVF = zeros(Na, Nz); 
+    mVFnew = mVF;
+    mAPrimePol = zeros(Na, Nz);
+
+    % Value function iteration for household asset supply
+    error = 10;
+    tol_vfi = 1e-3;
+    while error > tol_vfi
+        for iz = 1:Nz
+            z = zGrid(iz);
+            expValue = mVF * P;
+            expValue = expValue(:, iz);
+            minWealth = a_lower;
+            for ia = 1:Na
+                a = a_grid(ia);
+                budget = w*z + (1+r)*a;
+                aprime = fnOptFAST(beta,budget,a_grid,expValue,Na,minWealth);
+                if aprime < a_lower
+                    aprime = a_lower;
+                end
+                ia_low = max(1, min(Na-1, sum(a_grid < aprime)));
+                ia_high = ia_low + 1;
+                denom = a_grid(ia_high) - a_grid(ia_low);
+                if denom == 0
+                    weightLow = 1;
+                else
+                    weightLow = (a_grid(ia_high) - aprime) / denom;
+                end
+                weightLow = min(max(weightLow,0),1);
+                value = weightLow*expValue(ia_low)+(1-weightLow)*expValue(ia_high);
+                c = budget - aprime;
+                minWealth = aprime;
+                mVFnew(ia,iz) = log(c) + beta*value;
+                mAPrimePol(ia,iz) = aprime;
+            end
+        end
+        error = max(max(abs(mVFnew - mVF)));
+        mVF = mVFnew;
+    end
+
+    % Interpolate policy for stationary distribution
+    mAPrimePol2 = zeros(Na2, Nz);
+    for iz = 1:Nz
+        mAPrimePol2(:,iz) = interp1(a_grid, mAPrimePol(:,iz), a_grid2,"linear","extrap");
+    end
+
+    % Stationary distribution
+    vLocationCombineda = kron(1:Na2, ones(1,Nz));
+    vLocationCombinedz = kron(ones(size(a_grid2)), 1:Nz);
+    Pbig = zeros(Na2*Nz, Na2*Nz);
+    for iLocation = 1:Na2*Nz
+        ia = vLocationCombineda(iLocation);
+        iz = vLocationCombinedz(iLocation);
+        nexta = mAPrimePol2(ia,iz);
+        LB = max(1, min(Na2-1, sum(a_grid2 < nexta)));
+        UB = LB + 1;
+        denom = a_grid2(UB) - a_grid2(LB);
+        if denom == 0
+            weightLB = 1;
+        else
+            weightLB = (a_grid2(UB) - nexta) / denom;
+        end
+        weightLB = min(max(weightLB,0),1);
+        weightUB = 1-weightLB;
+        for izp = 1:Nz
+            idxLB = find(vLocationCombineda==LB & vLocationCombinedz==izp);
+            idxUB = find(vLocationCombineda==UB & vLocationCombinedz==izp);
+            Pbig(iLocation,idxLB) = Pbig(iLocation,idxLB) + weightLB * P(iz,izp);
+            Pbig(iLocation,idxUB) = Pbig(iLocation,idxUB) + weightUB * P(iz,izp);
+        end
+    end
+    [Vstat,~] = eigs(Pbig',1); % Left eigenvector
+    currentDist0 = Vstat(:,1) / sum(Vstat(:,1));
+    marginalDista = zeros(Na2,1);
+    for iLocation = 1:Na2*Nz
+        ia = vLocationCombineda(iLocation);
+        marginalDista(ia) = marginalDista(ia) + currentDist0(iLocation);
+    end
+    % Aggregate assets (household supply)
+    Ea_vec(ir) = sum(a_grid2(:) .* marginalDista(:));
+
+    % Firm capital demand at this r (Cobb-Douglas, static)
+    Kdem_vec(ir) = (alpha / (r + delta))^(1 / (1 - alpha)) * Lbar;
+end
+
+% ---- Plot (Figure IIb style) ----
+figure;
+plot(Ea_vec, rvec, 'b-', 'LineWidth', 2); hold on;
+plot(Kdem_vec, rvec, 'r--', 'LineWidth', 2);
+xlabel('Assets / Capital per capita');
+ylabel('Interest Rate r');
+title('Aiyagari (1994) Figure IIb: Steady-State Determination, No Borrowing');
+legend('Household Asset Supply E_a(r)','Firm Capital Demand K(r)');
+grid on; hold off;
