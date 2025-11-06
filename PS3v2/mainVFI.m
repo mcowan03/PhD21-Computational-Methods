@@ -55,8 +55,6 @@ currentDist = ones(Na2,Nz);
 currentDist = currentDist/(Na2*Nz); %normalize
 
 
-
-
 % Initial Guess
 
 K = 6;
@@ -65,14 +63,13 @@ weightOld = 0.9;
 [vL,~] = eigs(P',1);
 vL = vL/sum(vL);
 disp(vL);
-supplyL = zGrid*vL
+supplyL = zGrid*vL;
 
 %% SOLVING THE MODEL %%
 % Loop Settings
 error2 = 10;
 tol_ge = 1e-8;
 numIterGE = 1;
-
 
 % GE LOOP %
 while error2 > tol_ge
@@ -88,8 +85,8 @@ numIterVFI = 1;
            for iz = 1:Nz
                z = zGrid(iz);
                % expected future value, given z
-               expValue = mVF*P;
-               expValue = expValue(iz,:);
+               expValue = mVF * P;
+               expValue = expValue(:, iz); % "column for this z"
 
                % We use monotonicity
                minWealth = a_lower;
@@ -103,15 +100,22 @@ numIterVFI = 1;
                    aprime = fnOptFAST(beta,budget,a_grid,expValue,Na,minWealth);
 
                    % Borrowing constraint
-                   aprime(aprime<a_lower) = a_lower;
+                   if aprime < a_lower
+                       aprime = a_lower;
+                   end
 
                    % Linear interpolation for off-the-grid aprime
-                   a_lower = sum(a_grid<aprime);
-                   a_lower(a_lower<=1) = 1;
-                   a_lower(a_lower>=Na) = Na-1;
-                   a_upper = a_lower+1;
-                   weightLow = (a_grid(a_upper) - aprime)/(a_grid(a_upper)-a_grid(a_lower));
-                   value = weightLow*expValue(a_lower)+(1-weightLow)*expValue(a_upper);
+                   ia_low = max(1, min(Na-1, sum(a_grid < aprime)));
+                   ia_high = ia_low + 1;
+                   denom = a_grid(ia_high) - a_grid(ia_low);
+                   if denom == 0
+                       weightLow = 1;
+                   else
+                       weightLow = (a_grid(ia_high) - aprime) / denom;
+                   end
+                   weightLow = min(max(weightLow,0),1);
+
+                   value = weightLow*expValue(ia_low)+(1-weightLow)*expValue(ia_high);
 
                    c = budget - aprime;
 
@@ -130,8 +134,9 @@ numIterVFI = 1;
 
        
 numIterVFI = numIterVFI+1;
-
+fprintf('Starting VFI Iteration %d\n', numIterVFI);
     end %This ends the VFI loop
+
 
     %interpolation - wealth policy
     %=========================
@@ -142,7 +147,7 @@ numIterVFI = numIterVFI+1;
         mAPrimePol2 = mAPrimePol;
         else
         for iz = 1:Nz
-        mAPrimePol2(:,iz) = interp1(a_grid,aprime(:,iz),a_grid2,"linear","extrap");
+        mAPrimePol2(:,iz) = interp1(a_grid,mAPrimePol(:,iz),a_grid2,"linear","extrap");
         end
     end
 
@@ -161,13 +166,15 @@ for iLocation = 1:Nz*Na2
 
     a = a_grid2(ia);
     nexta = mAPrimePol2(ia,iz);
-    LB = sum(a_grid2<nexta);
-    LB(LB<=0) = 1;
-    LB(LB>=Na2) = Na2-1;
+    LB = max(1, min(Na2-1, sum(a_grid2 < nexta)));
     UB = LB+1;
-    weightLB = (a_grid2(UB) - nexta)/(a_grid2(UB)-a_grid2(LB));
-    weightLB(weightLB<0) = 0;
-    weightLB(weightLB>1) = 1;
+    denom = a_grid2(UB) - a_grid2(LB);
+    if denom == 0
+        weightLB = 1;
+    else
+        weightLB = (a_grid2(UB) - nexta) / denom;
+    end
+    weightLB = min(max(weightLB,0),1);
     weightUB = 1-weightLB;
 
     for izprime = 1:Nz
@@ -204,7 +211,7 @@ error2 = abs(endoK - K);
 K = K.*weightOld+endoK.*(1-weightOld);
 
 % report only spasmodically
-if verbose == true && (floor((numIterGE-1)/50) == (numIterGe-1)/50) || error2<= tol_ge
+if verbose == true && (floor((numIterGE-1)/50) == (numIterGE-1)/50) || error2<= tol_ge
 %=========================  
 % interim report
 %=========================  
@@ -221,7 +228,6 @@ close all;
 figure;
 plot(a_grid2,currentDist);
 title("The wealth distributions for different labor endowments","fontsize",15)
-saveas(gcf,'../figures/dist_ss.jpg');
 hold off;
 
 pause(0.01);
