@@ -2,32 +2,31 @@ function [aprimeopt] = fnOptFAST(beta,budget,a_grid,expValue,Na,minWealth)
 
 % optimization option
 options = optimset('Display','off','TolFun',1e-12,'TolX',1e-12,'MaxIter',20000,'MaxFunEvals',20000); % MaxFunEvals: 22400 (Default);
-[aprimeopt] = fminbnd(@residCal,minWealth,budget,options);
+[aprimeopt] = fminbnd(@residCal, minWealth, budget, options);
 
-%=========================    
-%nested function
-%=========================    
-function [optVal] = residCal(Guess)
-    
-aprime = Guess;
-a_lower = sum(a_grid<aprime);
-a_lower(a_lower<1) = 1;
-a_lower(a_lower>=Na) = Na-1;
-a_upper = a_lower+1;
+    function [optVal] = residCal(Guess)
+        aprime = Guess;
+        
+        ia_low = max(1, min(Na-1, sum(a_grid < aprime)));
+        ia_high = ia_low + 1;
 
-weightLow = (a_grid(a_upper) - aprime)/(a_grid(a_upper)-a_grid(a_lower));
-weightLow(weightLow<0) = 0;
-weightLow(weightLow>1) = 1;
+        denom = a_grid(ia_high) - a_grid(ia_low);
+        if denom == 0
+            weightLow = 1;
+        else
+            weightLow = (a_grid(ia_high) - aprime) / denom;
+        end
+        weightLow = min(max(weightLow, 0), 1);
 
-value = weightLow*expValue(a_lower)+(1-weightLow)*expValue(a_upper);
-c = budget - aprime;
+        value = weightLow * expValue(ia_low) + (1-weightLow) * expValue(ia_high);
+        c = budget - aprime;
+        if c <= 0
+            optVal = 1e6; % Large penalty if consumption non-positive
+            return
+        end
 
-%update
-value = log(c)+beta*value;
-optVal = -value;
-
-end    
-%=========================    
-%=========================    
+        value = log(c) + beta * value;
+        optVal = -value;
+    end
 
 end
