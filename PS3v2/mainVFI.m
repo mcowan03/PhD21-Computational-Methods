@@ -68,7 +68,7 @@ supplyL = zGrid*vL;
 %% SOLVING THE MODEL %%
 % Loop Settings
 error2 = 10;
-tol_ge = 1e-8;
+tol_ge = 1e-5;
 numIterGE = 1;
 
 % GE LOOP %
@@ -81,7 +81,7 @@ while error2 > tol_ge
 error = 10;
 numIterVFI = 1;
 
-    while error > 1e-8
+    while error > 1e-5
            for iz = 1:Nz
                z = zGrid(iz);
                % expected future value, given z
@@ -134,9 +134,11 @@ numIterVFI = 1;
 
        
 numIterVFI = numIterVFI+1;
-fprintf('Starting VFI Iteration %d\n', numIterVFI);
+%fprintf('Starting VFI Iteration %d\n', numIterVFI);
     end %This ends the VFI loop
-
+if verbose
+    fprintf('VFI converged after %d iterations (final error: %.2e)\n', numIterVFI-1, error);
+end
 
     %interpolation - wealth policy
     %=========================
