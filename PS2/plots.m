@@ -26,7 +26,7 @@ hold on;
 plot(Time_Vec, Mean_A + 2*Std_A, '--', 'Color', [0.5 0.5 0.5], 'DisplayName', 'Mean + 2 Std. Dev.');
 plot(Time_Vec, Mean_A - 2*Std_A, '--', 'Color', [0.5 0.5 0.5], 'DisplayName', 'Mean - 2 Std. Dev.');
 hold off;
-title('💰 Assets and Wealth Distribution');
+title(' Assets and Wealth Distribution');
 xlabel('Age (t)');
 ylabel('Asset Level');
 grid on;
@@ -36,7 +36,7 @@ legend('show', 'Location', 'northwest');
 % --- Subplot 2: Human Capital (H) ---
 subplot(2, 2, 2);
 plot(Time_Vec, Mean_H, 'LineWidth', 2, 'Color', 'g');
-title('👨‍🎓 Human Capital Accumulation');
+title(' Human Capital Accumulation');
 xlabel('Age (t)');
 ylabel('Human Capital Level (h)');
 grid on;
@@ -45,7 +45,7 @@ grid on;
 % --- Subplot 3: Consumption (C) ---
 subplot(2, 2, 3);
 plot(Time_Vec, Mean_C, 'LineWidth', 2, 'Color', 'r');
-title('🍽️ Consumption Path');
+title(' Consumption Path');
 xlabel('Age (t)');
 ylabel('Consumption (c)');
 grid on;
@@ -54,7 +54,7 @@ grid on;
 % --- Subplot 4: Labor Force Participation (L) ---
 subplot(2, 2, 4);
 plot(Time_Vec, Mean_L, 'LineWidth', 2, 'Color', 'b');
-title('💼 Labor Force Participation Rate');
+title(' Labor Force Participation Rate');
 xlabel('Age (t)');
 ylabel('Probability of Working');
 ylim([0, 1]); % Probability must be between 0 and 1
@@ -62,3 +62,4 @@ grid on;
 
 % --- Final Touches ---
 sgtitle(['Simulated Life-Cycle Paths (N=', num2str(N_households), ')']);
+
