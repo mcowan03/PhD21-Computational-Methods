@@ -12,7 +12,7 @@ rho_z = 0.9;
 sigma_z = 0.2;
 Nz = 100;
 z_bar = 1.3;
-nStd = 4;
+nStd = 5;
 
 M = 1;
 % Tolerances/Settings
@@ -210,4 +210,5 @@ title('Share of Firms by Number of Employees');
 % --- PLOT 5: EMPLOYMENT SHARE PIE CHART ---
 figure;
 pie(share_employment, cellfun(@(x, y) sprintf('%s: %.1f%%', x, y*100), labels', num2cell(share_employment), 'UniformOutput', false));
+
 title('Employment Share by Firm Size');
